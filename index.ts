@@ -1,11 +1,14 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express from "express";
 import http from "http";
 import { Server, Socket } from "socket.io";
 import { createClient } from "redis";
 import cors from "cors";
-import dotenv from "dotenv";
-dotenv.config();
+import "./utils/redis";
 import "./SuperNode";
+import { redisReplica } from "./utils/redis";
+import axios from "axios";
 
 const app = express();
 const options: cors.CorsOptions = {
@@ -13,7 +16,7 @@ const options: cors.CorsOptions = {
 };
 app.use(cors(options));
 const server = http.createServer(app);
-const io = new Server(server, {
+export const io = new Server(server, {
   cors: {
     origin: ["*"],
     methods: ["GET", "POST"],
@@ -160,4 +163,19 @@ const PORT = process.env.PORT || 3001;
 
 server.listen(PORT, () => {
   console.log(`listening on *:${PORT}`);
+});
+
+redisReplica.subscribe("saveCasinoData", (message: any) => {
+  const data = JSON.parse(message);
+
+  axios
+    .post(`${process.env.CLIENT_NODE_URL}/save-casino-match`, {
+      data: {
+        mid: data.mid,
+        gameType: data.gameType,
+        ...{ ...data.data, status: "processing" },
+      },
+    })
+    .then(() => {})
+    .catch((err: any) => console.log("save casino match", err.stack));
 });

@@ -1,7 +1,8 @@
 import axios from "axios";
-import { io } from "socket.io-client";
+import { io as SuperNodeIo } from "socket.io-client";
+import { io } from ".";
 
-const socket = io(process.env.SUPER_NODE_SOCKET_URL!, {
+const socket = SuperNodeIo(process.env.SUPER_NODE_SOCKET_URL!, {
   transports: ["websocket"],
 });
 
@@ -13,12 +14,19 @@ socket.on("newFancyAdded", async ({ fancy, matchId }) => {
         matchId,
       },
     })
-    .then((res) => {})
+    .then((res) => {
+      io.to(matchId).emit("addNewFancy", { newFancy: res.data.data, fancy });
+    })
     .catch((e) => console.log(e.response));
 });
 
-socket.on("deactivateFancy-Super", (fancy) => {
+socket.on("deactivateFancy", (fancy) => {
   if (Object.keys(fancy).length > 0) {
+    Object.keys(fancy).map((matchId) => {
+      fancy[matchId].map((marketId: any) => {
+        io.to(matchId).emit("removeFancy", { marketId, matchId });
+      });
+    });
     axios
       .post(`${process.env.CLIENT_NODE_URL}/deactivate-fancy`, {
         fancies: fancy,
@@ -30,7 +38,7 @@ socket.on("deactivateFancy-Super", (fancy) => {
   }
 });
 
-socket.on("deactivateMarket-Super", (market: any) => {
+socket.on("deactivateMarket", (market: any) => {
   axios
     .post(`${process.env.CLIENT_NODE_URL}/deactivate-markets`, {
       market,
@@ -44,7 +52,7 @@ socket.on("deactivateMarket-Super", (market: any) => {
     .catch((e) => console.log(e.response.data));
 });
 
-socket.on("activateMarket-Super", (marketIds: string) => {
+socket.on("activateMarket", (marketIds: string) => {
   axios
     .post(`${process.env.CLIENT_NODE_URL}/activate-markets`, {
       marketIds,
