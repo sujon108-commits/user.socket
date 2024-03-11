@@ -6,6 +6,10 @@ const socket = SuperNodeIo(process.env.SUPER_NODE_SOCKET_URL!, {
   transports: ["websocket"],
 });
 
+socket.on("connect", () => {
+  console.log("connected super");
+});
+
 socket.on("newFancyAdded", async ({ fancy, matchId }) => {
   axios
     .post(`${process.env.CLIENT_NODE_URL}/add-new-fancy`, {
